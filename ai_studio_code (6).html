@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="A Next-Gen Scientific & Loan Calculator with Hacker UI.">
+    <meta name="author" content="Om Prakash Jena">
+    <title>Scientific Calculator | Hacker Mode</title>
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --bg-panel: rgba(20, 20, 25, 0.95);
+            --primary: #8b5cf6; /* Violet */
+            --secondary: #06b6d4; /* Cyan */
+            --hacker-green: #00ff41; /* Hacker Green */
+            --text-main: #e2e8f0;
+            --text-dim: #94a3b8;
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'Courier New', monospace;
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box; outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            position: relative;
+        }
+
+        /* --- BACKGROUND EFFECTS --- */
+        .background-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+
+        .globe-bg {
+            font-size: 60vh;
+            filter: blur(4px) grayscale(30%) drop-shadow(0 0 20px rgba(6, 182, 212, 0.5));
+            animation: rotateGlobe 60s linear infinite;
+            opacity: 0.15;
+            position: relative; z-index: 1;
+        }
+
+        @keyframes rotateGlobe { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .shockwave {
+            position: absolute; width: 150vw; height: 150vw;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(0, 255, 65, 0.1) 20%, transparent 40%);
+            border-radius: 50%;
+            animation: spinWave 10s linear infinite;
+            z-index: 0; opacity: 0.3; filter: blur(10px);
+        }
+
+        .shockwave::after {
+            content: ''; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%;
+            border: 2px dashed rgba(6, 182, 212, 0.2);
+            border-radius: 50%;
+            animation: pulseBorder 2s ease-out infinite;
+        }
+
+        @keyframes spinWave {
+            0% { transform: rotate(0deg) scale(0.8); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(0.8); }
+        }
+
+        @keyframes pulseBorder {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            100% { transform: scale(1.05); opacity: 0; }
+        }
+
+        /* --- HEADER --- */
+        header {
+            text-align: center; padding: 15px 0 5px 0;
+            background: rgba(5, 5, 5, 0.95); z-index: 101;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+        }
+        
+        .app-title {
+            font-size: 1.2rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--secondary), var(--primary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            display: flex; justify-content: space-around; padding: 10px;
+            backdrop-filter: blur(10px); border-bottom: var(--glass-border);
+            z-index: 100; background: rgba(9, 9, 11, 0.8);
+        }
+
+        .nav-btn {
+            background: transparent; border: none; color: var(--text-dim);
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            position: relative; text-transform: uppercase; padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .nav-btn.active { color: var(--secondary); }
+        .nav-btn.active::after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 3px; background: var(--secondary); border-radius: 2px;
+        }
+
+        /* --- MAIN CONTENT --- */
+        main {
+            flex: 1; position: relative; overflow-y: auto; padding: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        .section {
+            display: none; width: 100%; max-width: 600px; margin: 0 auto;
+            animation: fadeIn 0.4s ease forwards; padding-bottom: 30px;
+        }
+        .section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- CALCULATOR --- */
+        .calc-wrapper { display: flex; flex-direction: column; gap: 0; }
+
+        /* STICKY DISPLAY */
+        .display-container {
+            position: sticky; top: 0; z-index: 50;
+            background: #000; border-radius: 16px; padding: 15px 20px;
+            text-align: right; border: 1px solid rgba(0, 255, 65, 0.3);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8); margin-bottom: 20px;
+        }
+
+        .calc-history-preview { font-size: 0.9rem; color: var(--text-dim); min-height: 1.2rem; }
+        .calc-screen { font-size: 2.2rem; font-weight: 300; word-wrap: break-word; color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
+
+        .keypad {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding-bottom: 20px;
+        }
+
+        .key {
+            background: var(--bg-panel); border: var(--glass-border); color: var(--text-main);
+            padding: 15px 0; border-radius: 10px; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .key:active { background: rgba(255,255,255,0.15); transform: scale(0.95); }
+        .key.op { color: var(--secondary); font-size: 1.3rem; }
+        .key.action { color: var(--accent); }
+        .key.eq { background: var(--primary); color: white; box-shadow: 0 0 10px rgba(139, 92, 246, 0.4); }
+        .key.sci { font-size: 0.8rem; color: var(--text-dim); background: rgba(255,255,255,0.03); }
+
+        /* --- HISTORY SECTION --- */
+        .history-section {
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 255, 65, 0.2);
+            border-radius: 12px; padding: 15px; margin-top: 10px;
+            max-height: 250px; overflow-y: auto; backdrop-filter: blur(5px);
+        }
+        
+        .history-header {
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text-dim); font-size: 0.8rem;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1); padding-bottom: 5px; margin-bottom: 10px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        .clear-hist-btn {
+            background: none; border: 1px solid var(--accent); color: var(--accent);
+            padding: 2px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 4px;
+        }
+
+        .history-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-family: var(--font-mono); font-size: 0.9rem;
+        }
+        .hist-exp { color: #aaa; font-size: 0.8rem; }
+        .hist-res { color: var(--hacker-green); font-weight: bold; }
+        .hist-empty { text-align: center; color: var(--text-dim); padding: 10px; font-size: 0.8rem; }
+
+        /* --- LOAN --- */
+        .loan-container { display: flex; flex-direction: column; gap: 20px; }
+        .input-group label { display: block; margin-bottom: 5px; color: var(--text-dim); font-size: 0.9rem; }
+        .input-group input, .input-group select {
+            width: 100%; background: rgba(0,0,0,0.4); border: var(--glass-border); color: white; padding: 12px; border-radius: 8px;
+        }
+        .btn-calc {
+            width: 100%; padding: 14px; background: var(--secondary); border: none; border-radius: 8px; 
+            color: #000; font-weight: bold; margin-top: 10px; cursor: pointer;
+        }
+
+        .loan-results {
+            background: rgba(0,0,0,0.4); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .result-circle {
+            width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--primary) 0deg, var(--bg-dark) 0deg);
+            display: flex; align-items: center; justify-content: center; margin-bottom: 15px; position: relative;
+        }
+        .result-circle::before { content: ''; position: absolute; width: 120px; height: 120px; background: #121214; border-radius: 50%; }
+        .emi-display { position: relative; z-index: 2; text-align: center; }
+        .emi-val { font-size: 1.3rem; font-weight: bold; color: var(--secondary); display: block; }
+        .emi-label { font-size: 0.8rem; color: var(--text-dim); }
+        .stat-row { display: flex; justify-content: space-between; width: 100%; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+
+        /* --- CONTACT & REVIEWS --- */
+        .reviews-grid { display: grid; gap: 15px; margin-top: 20px; }
+        .review-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px; border-radius: 8px; transition: transform 0.2s;
+        }
+        .review-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
+        .stars { color: #fbbf24; margin-bottom: 8px; font-size: 1rem; }
+        .review-text { font-style: italic; color: #ddd; font-size: 0.9rem; line-height: 1.4; }
+        .reviewer {
+            text-align: right; margin-top: 10px; font-size: 0.8rem; 
+            color: var(--secondary); font-family: var(--font-mono); font-weight: bold;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            text-align: center; padding: 12px; color: var(--text-dim); font-size: 0.7rem;
+            border-top: var(--glass-border); background: rgba(5, 5, 5, 0.95);
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+
+        /* --- MODAL (ONBOARDING) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            width: 90%; max-width: 350px; background: #000;
+            border: 1px solid var(--hacker-green);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+            padding: 25px; border-radius: 5px; font-family: var(--font-mono);
+            color: var(--hacker-green); text-align: left; position: relative;
+        }
+        
+        .modal-title { font-size: 1.2rem; border-bottom: 1px dashed var(--hacker-green); padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; }
+        .modal-text { font-size: 0.9rem; margin-bottom: 15px; line-height: 1.4; color: #ddd; }
+        .modal-input {
+            width: 100%; background: #111; border: 1px solid #333; color: white; padding: 10px;
+            font-family: var(--font-mono); margin-bottom: 15px;
+        }
+        .modal-input:focus { border-color: var(--hacker-green); }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 0.85rem; }
+        
+        .btn-enter {
+            width: 100%; background: var(--hacker-green); color: black; border: none; padding: 12px;
+            font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: var(--font-mono);
+            transition: 0.2s;
+        }
+        .btn-enter:hover { box-shadow: 0 0 15px var(--hacker-green); }
+
+        /* --- TOAST --- */
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 255, 65, 0.1); border: 1px solid var(--hacker-green);
+            color: var(--hacker-green); padding: 10px 20px; border-radius: 4px;
+            font-family: var(--font-mono); font-size: 0.9rem; z-index: 1500;
+            opacity: 0; transition: opacity 0.5s; pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+        }
+        .toast.show { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+    <div class="background-container">
+        <div class="shockwave"></div>
+        <div class="globe-bg">🌍</div>
+    </div>
+
+    <!-- Modal -->
+    <div id="welcome-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">System Access Protocol</div>
+            <div class="modal-text">This is a high-performance computational tool. Access requires user identification.</div>
+            <input type="text" id="user-name-input" class="modal-input" placeholder="Enter Codename..." autocomplete="off">
+            <div class="checkbox-group">
+                <input type="checkbox" id="agree-chk">
+                <label for="agree-chk">I agree to the Terms of Calculation.</label>
+            </div>
+            <button class="btn-enter" onclick="submitUser()">Initialize System</button>
+        </div>
+    </div>
+
+    <div id="toast-msg" class="toast"></div>
+
+    <header>
+        <div class="app-title">Scientific Calculator</div>
+    </header>
+
+    <nav>
+        <button class="nav-btn active" onclick="switchTab('calculator')">Calc</button>
+        <button class="nav-btn" onclick="switchTab('loan')">Loan</button>
+        <button class="nav-btn" onclick="switchTab('symbols')">Symb</button>
+        <button class="nav-btn" onclick="switchTab('community')">Contact</button>
+    </nav>
+
+    <main>
+        <!-- Calculator Tab -->
+        <section id="calculator" class="section active">
+            <div class="calc-wrapper">
+                <div class="display-container">
+                    <div style="position:relative;">
+                        <span id="mem-indicator" style="position:absolute; top:0; left:0; font-size:0.8rem; color:var(--accent); opacity:0;">M</span>
+                        <div class="calc-history-preview" id="calc-history"></div>
+                    </div>
+                    <div class="calc-screen" id="calc-screen">0</div>
+                </div>
+
+                <div class="keypad">
+                    <div class="key sci" onclick="mem('MC')">MC</div>
+                    <div class="key sci" onclick="mem('MR')">MR</div>
+                    <div class="key sci" onclick="mem('M+')">M+</div>
+                    <div class="key sci" onclick="mem('M-')">M-</div>
+                    <div class="key sci" onclick="mem('MS')">MS</div>
+
+                    <div class="key sci" onclick="setMode()" id="mode-btn">DEG</div>
+                    <div class="key sci" onclick="appendFunc('sin')">sin</div>
+                    <div class="key sci" onclick="appendFunc('cos')">cos</div>
+                    <div class="key sci" onclick="appendFunc('tan')">tan</div>
+                    <div class="key action" onclick="clearAll()">AC</div>
+
+                    <div class="key sci" onclick="appendFunc('log')">log</div>
+                    <div class="key sci" onclick="appendFunc('ln')">ln</div>
+                    <div class="key sci" onclick="appendToken('(')">(</div>
+                    <div class="key sci" onclick="appendToken(')')">)</div>
+                    <div class="key action" onclick="backspace()">⌫</div>
+
+                    <div class="key sci" onclick="appendToken('^')">^</div>
+                    <div class="key sci" onclick="appendFunc('sqrt')">√</div>
+                    <div class="key sci" onclick="appendToken('^2')">x²</div>
+                    <div class="key sci" onclick="fact()">n!</div>
+                    <div class="key op" onclick="appendToken('/')">÷</div>
+
+                    <div class="key" onclick="appendNum('7')">7</div>
+                    <div class="key" onclick="appendNum('8')">8</div>
+                    <div class="key" onclick="appendNum('9')">9</div>
+                    <div class="key sci" onclick="appendToken('%')">%</div>
+                    <div class="key op" onclick="appendToken('*')">×</div>
+
+                    <div class="key" onclick="appendNum('4')">4</div>
+                    <div class="key" onclick="appendNum('5')">5</div>
+                    <div class="key" onclick="appendNum('6')">6</div>
+                    <div class="key sci" onclick="appendToken('PI')">π</div>
+                    <div class="key op" onclick="appendToken('-')">–</div>
+
+                    <div class="key" onclick="appendNum('1')">1</div>
+                    <div class="key" onclick="appendNum('2')">2</div>
+                    <div class="key" onclick="appendNum('3')">3</div>
+                    <div class="key sci" onclick="appendToken('e')">e</div>
+                    <div class="key op" onclick="appendToken('+')">+</div>
+
+                    <div class="key" onclick="toggleSign()">+/–</div>
+                    <div class="key" onclick="appendNum('0')">0</div>
+                    <div class="key" onclick="appendNum('.')">.</div>
+                    <div class="key sci" onclick="appendToken('EXP')">Exp</div>
+                    <div class="key eq" onclick="calculate()">=</div>
+                </div>
+
+                <div class="history-section">
+                    <div class="history-header">
+                        <span>System Log</span>
+                        <button class="clear-hist-btn" onclick="clearHistoryLog()">Clear</button>
+                    </div>
+                    <div id="history-list"><div class="hist-empty">No Data Logged</div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loan Tab -->
+        <section id="loan" class="section">
+            <h2 style="text-align:center; margin-bottom:20px; font-family:var(--font-mono); color:var(--hacker-green);">LOAN PROTOCOL</h2>
+            <div class="loan-container">
+                <div class="inputs">
+                    <div class="input-group"><label>Loan Amount (₹)</label><input type="number" id="loan-amount" value="500000"></div>
+                    <div class="input-group"><label>Rate (% Annual)</label><input type="number" id="loan-rate" value="8.5" step="0.1"></div>
+                    <div class="input-group"><label>Tenure (Years)</label><input type="number" id="loan-years" value="5"></div>
+                    <div class="input-group"><label>Type</label>
+                        <select id="loan-type">
+                            <option value="reducing">Reducing (EMI)</option>
+                            <option value="flat">Flat Rate</option>
+                        </select>
+                    </div>
+                    <button class="btn-calc" onclick="calculateLoan()">EXECUTE CALCULATION</button>
+                </div>
+                <div class="loan-results">
+                    <div class="result-circle" id="chart-circle">
+                        <div class="emi-display"><span class="emi-label">Monthly</span><span class="emi-val" id="emi-out">₹0</span></div>
+                    </div>
+                    <div class="stat-row"><span>Interest</span><span id="total-int" style="color:var(--accent)">₹0</span></div>
+                    <div class="stat-row"><span>Total Pay</span><span id="total-pay" style="color:var(--primary)">₹0</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Symbols Tab -->
+        <section id="symbols" class="section">
+            <div id="symbols-container" style="display:grid; gap:10px;"></div>
+        </section>
+
+        <!-- Community Tab -->
+        <section id="community" class="section">
+            <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:10px; border:1px solid var(--secondary); text-align:center;">
+                <h3 style="color:white; margin-bottom:10px;">DIRECT UPLINK</h3>
+                <p style="color:#aaa; font-size:0.9rem; margin-bottom:15px;">Establish connection with the developer.</p>
+                <a href="mailto:ind.dropshipping.hde@gmail.com?subject=System%20Feedback" 
+                   style="display:block; background:#000; border:1px dashed var(--secondary); color:var(--secondary); padding:15px; text-decoration:none; font-family:monospace;">
+                    ind.dropshipping.hde@gmail.com
+                </a>
+            </div>
+            <h3 style="color:var(--hacker-green); margin-top:30px; margin-bottom:15px; text-align:center; font-family:var(--font-mono); letter-spacing:1px; font-size:1.1rem;">USER TRANSMISSIONS</h3>
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="review-text">"The interface is incredibly responsive. The dark mode is perfect for late-night calculations."</p>
+                    <div class="reviewer">// Agent R. Sharma</div>
+                </div>
+                <div class="review-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="review-text">"Finally a loan calculator that handles the Indian numbering system correctly! Great job."</p>
+                    <div class="reviewer">// System ID: Sarah_J</div>
+                </div>
+                <div class="review-card">
+                    <div class="stars">★★★★☆</div>
+                    <p class="review-text">"Smooth animation and zero lag. The hacker aesthetic makes math feel less boring."</p>
+                    <div class="reviewer">// User: Tech_Guru_99</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>Made by OM PRAKASH JENA</footer>
+
+    <script>
+        window.addEventListener('load', () => {
+            const savedName = localStorage.getItem('omniCalcUser');
+            if (!savedName) document.getElementById('welcome-modal').classList.add('show');
+            renderSymbols(); calculateLoan(); renderHistory();
+        });
+
+        function submitUser() {
+            const name = document.getElementById('user-name-input').value.trim();
+            if (!document.getElementById('agree-chk').checked) return showToast("⚠️ ERROR: Agreement Required");
+            if (!name) return showToast("⚠️ ERROR: Identity Required");
+            localStorage.setItem('omniCalcUser', name);
+            document.getElementById('welcome-modal').classList.remove('show');
+            setTimeout(() => showToast(`ACCESS GRANTED. Welcome, ${name}`), 500);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast-msg'); t.innerText = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.section, .nav-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            const idx = ['calculator', 'loan', 'symbols', 'community'].indexOf(id);
+            if(idx > -1) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        let calcInput="", isRes=false, memVal=0, isDeg=true, historyLog=[];
+        const screen = document.getElementById('calc-screen');
+
+        function updateScreen() { screen.innerText = calcInput || "0"; screen.scrollLeft = screen.scrollWidth; }
+        function appendNum(n) { if(isRes){calcInput=""; isRes=false;} calcInput+=n; updateScreen(); }
+        function appendToken(t) { isRes=false; calcInput += (t==='PI'?'π':(t==='EXP'?'e+':t)); updateScreen(); }
+        function appendFunc(f) { isRes=false; calcInput += f+"("; updateScreen(); }
+        function clearAll() { calcInput=""; document.getElementById('calc-history').innerText=""; isRes=false; updateScreen(); }
+        function backspace() { if(isRes){clearAll(); return;} calcInput = calcInput.slice(0,-1); updateScreen(); }
+        function toggleSign() { calcInput = calcInput.startsWith('-') ? calcInput.substring(1) : '-'+calcInput; updateScreen(); }
+        function setMode() { isDeg=!isDeg; document.getElementById('mode-btn').innerText = isDeg?"DEG":"RAD"; }
+        function fact() { calcInput+="!"; updateScreen(); }
+        
+        function calculate() {
+            try {
+                let e = calcInput, disp = calcInput;
+                document.getElementById('calc-history').innerText = calcInput + " =";
+                e = e.replace(/π/g,'Math.PI').replace(/e/g,'Math.E').replace(/(\d+)!/g,'factorial($1)').replace(/\^/g,'**');
+                ['sin','cos','tan'].forEach(fn => {
+                    e = e.replace(new RegExp(`${fn}\\(([^)]+)\\)`,'g'), (m,v) => isDeg ? `Math.${fn}((${v})*Math.PI/180)` : `Math.${fn}(${v})`);
+                });
+                e = e.replace(/log\(/g,'Math.log10(').replace(/ln\(/g,'Math.log(').replace(/sqrt\(/g,'Math.sqrt(');
+                const res = new Function("factorial", "return "+e)(n => n<=1?1:n*arguments.callee(n-1));
+                let fin = parseFloat(Number(res.toFixed(8)).toString()).toString();
+                addToHistory(disp, fin); calcInput=fin; screen.innerText=fin; isRes=true;
+            } catch(x) { screen.innerText="Error"; isRes=true; calcInput=""; }
+        }
+
+        function addToHistory(e,r) {
+            if(!e || e===r) return;
+            historyLog.unshift({e,r}); if(historyLog.length>20) historyLog.pop();
+            renderHistory();
+        }
+        function renderHistory() {
+            const l = document.getElementById('history-list');
+            l.innerHTML = historyLog.length ? historyLog.map(i=>`<div class="history-item"><span class="hist-exp">${i.e}=</span><span class="hist-res">${i.r}</span></div>`).join('') : `<div class="hist-empty">No Data Logged</div>`;
+        }
+        function clearHistoryLog() { historyLog=[]; renderHistory(); }
+
+        function calculateLoan() {
+            const P = parseFloat(document.getElementById('loan-amount').value),
+                  R = parseFloat(document.getElementById('loan-rate').value),
+                  N = parseFloat(document.getElementById('loan-years').value),
+                  T = document.getElementById('loan-type').value;
+            if(!P||!R||!N) return;
+            let emi=0, tot=0, intr=0;
+            if(T==='reducing') {
+                const r = R/1200, n = N*12;
+                emi = (P*r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1); tot=emi*n; intr=tot-P;
+            } else {
+                intr = (P*R*N)/100; tot=P+intr; emi=tot/(N*12);
+            }
+            const f = new Intl.NumberFormat('en-IN', {style:'currency', currency:'INR'});
+            document.getElementById('emi-out').innerText = f.format(emi);
+            document.getElementById('total-int').innerText = f.format(intr);
+            document.getElementById('total-pay').innerText = f.format(tot);
+            const deg = (intr/tot)*360;
+            document.getElementById('chart-circle').style.background = `conic-gradient(var(--accent) 0deg ${deg}deg, var(--primary) ${deg}deg 360deg)`;
+        }
+
+        function mem(a) {
+            const c = parseFloat(screen.innerText)||0, i = document.getElementById('mem-indicator');
+            if(a==='MC'){memVal=0; i.style.opacity=0;}
+            else if(a==='MS'){memVal=c; i.style.opacity=1;}
+            else if(a==='MR'){if(isRes)calcInput=""; calcInput+=memVal; updateScreen();}
+            else if(a==='M+'){memVal+=c; i.style.opacity=1;}
+            else if(a==='M-'){memVal-=c; i.style.opacity=1;}
+        }
+
+        function renderSymbols() {
+            const d = [{c:"Arithmetic",i:["+","–","×","÷","=","≠"]},{c:"Algebra",i:["√x","∞","|x|","xʸ"]},{c:"Geometry",i:["π","∠","°","△"]}];
+            document.getElementById('symbols-container').innerHTML = d.map(x=>`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;"><div style="color:var(--secondary); border-bottom:1px solid #333; margin-bottom:5px;">${x.c}</div><div style="display:flex; justify-content:space-between; font-family:monospace;">${x.i.join('&nbsp;')}</div></div>`).join('');
+        }
+    </script>
+</body>
+</html>
